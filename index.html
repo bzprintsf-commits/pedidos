@@ -93,6 +93,19 @@ input:focus,select:focus,textarea:focus{outline:3px solid #ADC2FF;border-color:v
 .help b{display:block;margin-bottom:2px}
 .help p{margin:4px 0 0}
 .resume{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;background:#E3F7EA;border:1px solid #9BDDB2;color:#0F5E2E;border-radius:14px;padding:12px 16px;margin-bottom:16px;font-weight:600}
+.opts .wide{grid-column:1/-1}
+.opts textarea{min-height:54px;margin-top:2px;padding:9px 10px;font-size:15px}
+.rwarn{font-size:.85rem;color:var(--bad);background:#FDE7E7;border-radius:8px;padding:6px 10px;margin-top:8px}
+.ginfo{font-size:.85rem;color:var(--navy);background:var(--soft);border-radius:8px;padding:6px 10px;margin-top:8px}
+.grp{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:2px solid var(--blue);border-radius:14px;padding:12px 14px;margin-top:12px;background:#fff}
+.grp p{margin:0;flex:1;min-width:200px;font-size:.92rem;color:var(--muted)}
+.grp p b{color:var(--ink)}
+.grp button{font:700 .95rem var(--fb);background:var(--blue);color:#fff;border:0;border-radius:999px;padding:9px 16px;cursor:pointer}
+.spec{margin:0 0 12px;padding:0;list-style:none;display:grid;gap:6px}
+.spec li{background:var(--bg);border-radius:10px;padding:8px 12px;font-size:.9rem}
+.spec li b{display:block;word-break:break-word}
+.spec li span{color:var(--muted)}
+.when{margin:12px 0 0;background:#FFF3D1;color:#5A3D00;border-radius:10px;padding:10px 12px;font-size:.92rem}
 .resume button{font:700 .9rem var(--fb);background:#fff;border:1px solid #0F5E2E;color:#0F5E2E;border-radius:999px;padding:6px 14px;cursor:pointer}
 </style>
 </head>
@@ -119,6 +132,7 @@ input:focus,select:focus,textarea:focus{outline:3px solid #ADC2FF;border-color:v
       <strong>Tocá para elegir tus archivos</strong><br>o arrastralos acá · PDF, Word, PowerPoint o fotos</label>
     <div class="help"><b>¿Qué es "2 por hoja" o "4 por hoja"?</b>Achicamos las páginas para que entren varias en cada lado de la hoja y gastás menos.<p><b style="display:inline">4 por hoja:</b> entran 4 páginas de un lado y, si es doble faz, otras 4 del otro (8 páginas por hoja). En simple faz quedan 4 por hoja.</p><p>Ejemplo: un PDF de 80 páginas en 4 por hoja doble faz son 10 hojas; en simple faz, 20 hojas.</p></div>
     <div id="list"></div>
+    <div class="grp" id="grp" hidden><p><b>¿Querés todos los archivos en un solo anillado?</b> Tocá el botón y los anillamos juntos, en el orden en que los subiste.</p><button id="grpBtn" target="_self">Anillar todo junto</button></div>
     <button class="btn btn-line" id="testBtn" target="_self" hidden>+ Archivo de prueba (3 páginas)</button>
   </section>
 
@@ -134,7 +148,8 @@ input:focus,select:focus,textarea:focus{outline:3px solid #ADC2FF;border-color:v
       <label>Dirección (calle, número, piso/depto)<input type="text" id="dir" autocomplete="street-address" maxlength="200"></label>
       <label>Barrio y referencias<input type="text" id="ref" maxlength="200" placeholder="Ej: barrio Candioti, timbre 3B, portón negro"></label>
     </div>
-    <label class="sub">Comentarios (opcional)<textarea id="notas" maxlength="1000" placeholder="Ej: imprimir solo de la página 10 a la 40, tapa transparente, lo necesito para el jueves…"></textarea></label>
+    <label class="sub">Aclaraciones generales del pedido (opcional)<textarea id="notas" maxlength="1000" placeholder="Ej: tapa transparente, separar por materia, lo necesito para el jueves…"></textarea></label>
+    <div class="help"><b>⏱ ¿Cuándo está listo?</b>Hasta 1000 hojas: si hacés el pedido y lo pagás antes de las 10 hs, lo tenés el mismo día. Si no, al día siguiente. Pedidos de más de 1000 hojas: te confirmamos el plazo por WhatsApp.<p>Los envíos a domicilio salen de lunes a viernes desde las 15 hs.</p></div>
   </section>
 
   <section class="card legal">
@@ -155,7 +170,7 @@ input:focus,select:focus,textarea:focus{outline:3px solid #ADC2FF;border-color:v
 
   <section class="card pay" id="pago" hidden>
     <h2>Pedido <span id="pid"></span></h2>
-    <div class="okbox">¡Recibimos tu pedido! Total a pagar: <span id="ptotal"></span>. Lo empezamos a imprimir cuando se acredita el pago.</div>
+    <div class="okbox">¡Recibimos tu pedido! Total a pagar: <span id="ptotal"></span>. Lo empezamos a imprimir cuando se acredita el pago.<br><span id="pwhen"></span></div>
     <div id="mpBox" hidden>
       <h3>Opción 1 · Pagar con Mercado Pago (se confirma solo)</h3>
       <button class="btn btn-mp" id="mpBtn">Pagar con Mercado Pago</button>
@@ -180,6 +195,7 @@ input:focus,select:focus,textarea:focus{outline:3px solid #ADC2FF;border-color:v
 var P=null, CFG=null, ORDER=null, orderP=null, ITEMS=[], uid=0, SENT=false;
 var $=function(id){return document.getElementById(id)};
 var money=function(n){return '$'+Math.round(n).toLocaleString('es-AR')};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
 var API='https://script.google.com/macros/s/AKfycbzfCmaFBx8oW39Ky4eg3Fz92gktO4IFFY5h47lJ849GJoH9nqg4OLRGqhppUuGgdwykeQ/exec';
 function run(fn){var a=[].slice.call(arguments,1);return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:a})}).then(function(r){if(!r.ok)throw new Error('Sin conexión ('+r.status+'). Probá de nuevo.');return r.json()}).then(function(j){if(!j.ok)throw new Error(j.error);return j.data})}
 var cotizar=null;
@@ -206,7 +222,7 @@ $('files').addEventListener('change',function(e){addFiles(e.target.files);e.targ
 function addFiles(fl){
   if(SENT) return;
   [].slice.call(fl).forEach(function(f){
-    var it={id:++uid,file:f,name:f.name,size:f.size,pages:0,auto:false,color:'bn',faz:'doble',tam:'A4',nup:1,copias:1,term:'ninguna',cortado:false,prog:0,state:'cola',fileId:null};
+    var it={id:++uid,file:f,name:f.name,size:f.size,pages:0,auto:false,color:'bn',faz:'doble',tam:'A4',nup:1,copias:1,term:'ninguna',cortado:false,rmode:'all',rango:'',conId:'',nota:'',prog:0,state:'cola',fileId:null};
     ITEMS.push(it); renderItem(it); countPages(it); queue(it);
   });
   recalc();
@@ -232,25 +248,77 @@ function renderItem(it){
   d.innerHTML='<div class="fhead"><div><div class="fname"></div><div class="fmeta"></div></div><button class="x" title="Quitar" target="_self">×</button></div>'+
   '<div class="bar"><i></i></div>'+
   '<div class="opts">'+
-   '<label>Páginas<input type="number" min="1" data-k="pages" inputmode="numeric"></label>'+
+   '<label>Páginas del archivo<input type="number" min="1" data-k="pages" inputmode="numeric"></label>'+
+   '<label>Qué imprimir<select data-k="rmode"><option value="all">Todo el archivo</option><option value="some">Solo algunas páginas</option></select></label>'+
+   '<label class="wide rng">¿Qué páginas? (separalas con comas)<input type="text" data-k="rango" maxlength="120" placeholder="Ej: 1-10, 15, 20-25"></label>'+
    '<label>Impresión<select data-k="color"><option value="bn">Blanco y negro</option><option value="color">Color</option></select></label>'+
    '<label>Faz<select data-k="faz"><option value="doble">Doble faz</option><option value="simple">Simple faz</option></select></label>'+
    '<label>Tamaño<select data-k="tam"><option value="A4">A4</option><option value="A5">A5 (librito)</option></select></label>'+
    '<label>Páginas por hoja<select data-k="nup"><option value="1">1 (normal)</option><option value="2">2 por hoja</option><option value="4">4 por hoja</option></select></label>'+
    '<label>Copias<input type="number" min="1" max="500" data-k="copias" value="1" inputmode="numeric"></label>'+
-   '<label>Terminación<select data-k="term"><option value="ninguna">Suelto</option><option value="abrochado">Abrochado</option><option value="anillado">Anillado</option><option value="anillado_pro">Anillado pro</option></select></label>'+
+   '<label>Terminación<select data-k="term"><option value="ninguna">Suelto</option><option value="abrochado">Abrochado</option><option value="anillado">Anillado</option><option value="anillado_pro">Anillado pro</option><option value="junto">Anillado junto con otro archivo</option></select></label>'+
+   '<label class="con">¿Junto con cuál?<select data-k="conId"></select></label>'+
    '<label class="chk"><input type="checkbox" data-k="cortado"> Cortado</label>'+
-  '</div><div class="warn" hidden></div><div class="fprice"></div>';
+   '<label class="wide">Aclaraciones de este archivo (opcional)<textarea data-k="nota" maxlength="500" placeholder="Ej: las páginas 3 y 4 en color, tapa en cartulina, sin la carátula…"></textarea></label>'+
+  '</div><div class="warn" hidden></div><div class="rwarn" hidden></div><div class="ginfo" hidden></div><div class="fprice"></div>';
   d.querySelector('.fname').textContent=it.name;
   d.querySelectorAll('[data-k]').forEach(function(el){var v=it[el.dataset.k]; if(el.type==='checkbox') el.checked=!!v; else if(v!=null&&v!==0) el.value=v;});
   d.querySelector('.x').onclick=function(){removeItem(it)};
   d.querySelectorAll('[data-k]').forEach(function(el){
     el.addEventListener('input',function(){
       var k=el.dataset.k; it[k]=el.type==='checkbox'?el.checked:el.value;
-      if(k==='pages'){it.auto=false;} recalc();
+      if(k==='pages'){it.auto=false;} if(k==='rmode'||k==='term') syncItem(it); recalc();
     });
   });
-  $('list').appendChild(d); updItem(it);
+  $('list').appendChild(d); syncItem(it); updItem(it);
+}
+// muestra/oculta los campos que dependen de otras opciones y deja los controles iguales al dato
+function syncItem(it){
+  var d=$('f'+it.id); if(!d) return;
+  d.querySelectorAll('[data-k]').forEach(function(el){var k=el.dataset.k; if(k==='pages'||k==='conId'||document.activeElement===el) return; var v=it[k]; if(el.type==='checkbox') el.checked=!!v; else el.value=v==null?'':v;});
+  d.querySelector('.rng').hidden=it.rmode!=='some';
+  d.querySelector('.con').hidden=it.term!=='junto';
+}
+// arma la lista de "¿Junto con cuál?" con los archivos que van anillados
+function syncGroups(){
+  ITEMS.forEach(function(it){
+    var d=$('f'+it.id); if(!d) return; var s=d.querySelector('[data-k=conId]');
+    var ops=ITEMS.filter(function(x){return x!==it&&(x.term==='anillado'||x.term==='anillado_pro')});
+    s.innerHTML='<option value="">Elegí el archivo…</option>'+ops.map(function(){return '<option></option>'}).join('');
+    ops.forEach(function(x,i){var o=s.options[i+1]; o.value=String(x.id); o.textContent=x.name});
+    s.value=String(it.conId||'');
+  });
+  $('grp').hidden=ITEMS.length<2||!!SENT;
+}
+$('grpBtn').addEventListener('click',function(e){
+  e.preventDefault(); if(SENT||ITEMS.length<2) return;
+  var main=ITEMS[0]; if(main.term!=='anillado_pro') main.term='anillado'; main.conId='';
+  ITEMS.slice(1).forEach(function(it){it.term='junto';it.conId=String(main.id)});
+  ITEMS.forEach(syncItem); recalc();
+  $('grp').querySelector('p').innerHTML='<b>Listo:</b> todos los archivos van en el anillado de «'+main.name.replace(/[<>&]/g,'')+'». Podés cambiarlo en cada archivo.';
+});
+// los datos que usa el cotizador (con = posición del archivo con el que va anillado)
+function quoteItems(){
+  return ITEMS.map(function(it){
+    var o=Object.assign({},it); o.rango=it.rmode==='some'?it.rango:'';
+    o.con=-1; if(it.term==='junto') ITEMS.forEach(function(x,i){if(String(x.id)===String(it.conId)) o.con=i});
+    return o;
+  });
+}
+function specTxt(it,r){
+  var T={ninguna:'suelto',abrochado:'abrochado',anillado:'anillado',anillado_pro:'anillado pro',junto:'anillado junto con otro'};
+  var pg=it.rmode==='some'&&it.rango?'págs. '+it.rango+' ('+r.pages+' de '+(it.pages||'?')+')':r.pages+' pág.';
+  return pg+' · '+(it.color==='color'?'color':'B/N')+' · '+(it.faz==='doble'?'doble faz':'simple faz')+' · '+it.tam+(it.nup>1?' · '+it.nup+' por hoja':'')+
+    ' · '+it.copias+' copia'+(it.copias>1?'s':'')+' · '+(r.con>=0?'anillado junto con «'+ITEMS[r.con].name+'»':T[it.term])+(it.tam==='A5'||it.cortado?' · cortado':'');
+}
+// cuándo está listo: hasta 1000 hojas, pedido y pago antes de las 10 → mismo día; si no, el siguiente (no domingos)
+function listoTxt(hojas){
+  if(hojas>1000) return 'Pedidos de más de 1000 hojas: te confirmamos el plazo por WhatsApp.';
+  var d=new Date(), dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  if(d.getDay()!==0&&d.getHours()<10) return 'Si lo confirmás y pagás antes de las 10 hs, está listo hoy.';
+  var n=new Date(d); do{n.setDate(n.getDate()+1)}while(n.getDay()===0);
+  var man=new Date(d); man.setDate(d.getDate()+1);
+  return 'Pidiendo ahora, está listo '+(n.toDateString()===man.toDateString()?'mañana ('+dias[n.getDay()]+')':'el '+dias[n.getDay()])+'.';
 }
 function updItem(it){
   var d=$('f'+it.id); if(!d) return;
@@ -299,16 +367,27 @@ function pump(){
 function entrega(){var r=document.querySelector('input[name=ent]:checked');return r?r.value:''}
 function recalc(){
   if(!P) return;
-  var q=cotizar(ITEMS,entrega(),P);
-  ITEMS.forEach(function(it,i){var d=$('f'+it.id); if(d){var r=q.items[i]; d.querySelector('.fprice').innerHTML=it.pages?(r.hojas*r.copias+' hojas · <b>'+money(r.subtotal)+'</b>'):''}});
+  syncGroups();
+  var q=cotizar(quoteItems(),entrega(),P);
+  ITEMS.forEach(function(it,i){var d=$('f'+it.id); if(!d) return; var r=q.items[i];
+    d.querySelector('.fprice').innerHTML=r.pages?(r.hojas*r.copias+' hojas · <b>'+money(r.subtotal)+'</b>'):'';
+    var rw=d.querySelector('.rwarn'), gi=d.querySelector('.ginfo');
+    var rerr=r.rangoErr||(it.rmode==='some'&&!String(it.rango||'').trim()?'Escribí qué páginas querés imprimir (ej: 1-10, 15).':'');
+    rw.textContent=rerr||(r.sinGrupo?'Elegí con qué archivo va anillado. Mientras tanto lo cotizamos como un anillado aparte.':''); rw.hidden=!rw.textContent;
+    gi.textContent=r.con>=0?'Va dentro del anillado de «'+ITEMS[r.con].name+'» (el anillado se cobra en ese archivo).':
+      r.grupo?'Anillado con '+r.grupo+' archivo'+(r.grupo>1?'s':'')+' más: '+r.hojasAnillado+' hojas por anillado'+(r.anillados/r.copias>1?' (se divide en '+(r.anillados/r.copias)+' anillados)':'')+'.':'';
+    gi.hidden=!gi.textContent;
+  });
   var h='';
   if(ITEMS.length){
     var R=function(t,v,show){return show?'<div class="r"><span>'+t+'</span><b>'+money(v)+'</b></div>':''};
-    h='<div class="rows"><div class="r"><span>Hojas en total</span><b>'+q.hojas+'</b></div>'+
+    h='<ul class="spec">'+ITEMS.map(function(it,i){return '<li><b>'+esc(it.name)+'</b><span>'+esc(specTxt(it,q.items[i]))+(it.nota?' · “'+esc(it.nota)+'”':'')+'</span></li>'}).join('')+'</ul>'+
+      '<div class="rows"><div class="r"><span>Hojas en total</span><b>'+q.hojas+'</b></div>'+
       R('Impresión (tarifa '+q.tarifa+')',q.impresion,1)+R('Anillados',q.anillado,q.anillado)+R('Abrochados',q.abrochado,q.abrochado)+R('Cortado',q.cortado,q.cortado)+
       (entrega()==='domicilio'?'<div class="r"><span>Envío</span><b>'+(q.envio?money(q.envio):'Gratis')+'</b></div>':'')+
       '</div><div class="big"><span>Total</span><b>'+money(q.total)+'</b></div>';
     if(entrega()==='domicilio'&&q.envio&&q.subtotal<P.envioGratis) h+='<p class="fmeta">Te faltan '+money(P.envioGratis-q.subtotal)+' para el envío gratis.</p>';
+    h+='<p class="when">⏱ '+listoTxt(q.hojas)+'</p>';
   } else h='<p class="fmeta">Subí un archivo para ver el precio.</p>';
   $('resumen').innerHTML=h;
   $('stick').hidden=!ITEMS.length||SENT; $('stTotal').textContent=money(q.total);
@@ -329,6 +408,13 @@ $('enviar').addEventListener('click',function(e){
   if(tel.length<8) return showErr('Escribí tu teléfono con característica (ej: 342 612 3456).');
   if(!ITEMS.length) return showErr('Subí al menos un archivo.');
   if(ITEMS.some(function(i){return !(parseInt(i.pages,10)>0)})) return showErr('Completá la cantidad de páginas de todos los archivos.');
+  var qq=cotizar(quoteItems(),ent,P), bad=null;
+  ITEMS.forEach(function(it,i){ if(bad) return; var r=qq.items[i];
+    if(it.rmode==='some'&&!String(it.rango||'').trim()) bad='Escribí qué páginas querés imprimir de «'+it.name+'».';
+    else if(r.rangoErr) bad='«'+it.name+'»: '+r.rangoErr;
+    else if(r.sinGrupo) bad='Elegí con qué archivo va anillado «'+it.name+'».';
+  });
+  if(bad) return showErr(bad);
   if(!ent) return showErr('Elegí cómo recibís el pedido.');
   if(ent==='punto'&&!$('punto').value) return showErr('Elegí el punto de retiro.');
   if(ent==='domicilio'&&!$('dir').value.trim()) return showErr('Escribí la dirección de envío.');
@@ -337,14 +423,15 @@ $('enviar').addEventListener('click',function(e){
   run('submitOrder',ORDER.id,ORDER.token,{
     nombre:nombre, tel:tel, notas:$('notas').value, consent:consent,
     entrega:{tipo:ent,punto:$('punto').value,direccion:$('dir').value,ref:$('ref').value},
-    items:ITEMS.map(function(i){return {fileId:i.fileId,pages:i.pages,auto:i.auto,color:i.color,faz:i.faz,tam:i.tam,nup:i.nup,copias:i.copias,term:i.term,cortado:i.cortado}})
-  }).then(function(r){ showSent({id:r.id,total:r.q.total}); }).catch(function(e){btn.disabled=false;btn.textContent='Confirmar pedido';showErr(errText(e))});
+    items:quoteItems().map(function(i){return {fileId:i.fileId,pages:i.pages,auto:i.auto,rango:i.rango,color:i.color,faz:i.faz,tam:i.tam,nup:i.nup,copias:i.copias,term:i.term,con:i.con,cortado:i.cortado,nota:i.nota}})
+  }).then(function(r){ showSent({id:r.id,total:r.q.total,when:listoTxt(r.q.hojas)}); }).catch(function(e){btn.disabled=false;btn.textContent='Confirmar pedido';showErr(errText(e))});
 });
 function showSent(r){
     SENT=r; document.querySelectorAll('#app input,#app select,#app textarea').forEach(function(el){if(!el.closest('#pago')) el.disabled=true});
     document.querySelectorAll('.x').forEach(function(x){x.hidden=true});
     $('enviar').hidden=true; $('stick').hidden=true;
-    $('pid').textContent=r.id; $('ptotal').textContent=money(r.total);
+    $('pid').textContent=r.id; $('ptotal').textContent=money(r.total); $('pwhen').textContent=r.when?'⏱ '+r.when:'';
+    $('grp').hidden=true;
     var bank=[['Alias',CFG.alias],['CVU / CBU',CFG.cvu],['Titular',CFG.titular],['Monto',money(r.total)]].filter(function(x){return x[1]});
     $('bank').innerHTML=''; bank.forEach(function(x){var row=document.createElement('div');row.innerHTML='<span></span><b></b>'+(x[0]!=='Titular'?'<button class="copy" target="_self">Copiar</button>':'');
       row.querySelector('span').textContent=x[0]; row.querySelector('b').textContent=x[1];
@@ -397,7 +484,7 @@ function save(){
   try{ localStorage.setItem(KEY,JSON.stringify({t:Date.now(),order:ORDER,sent:SENT||null,
     f:{nombre:$('nombre').value,tel:$('tel').value,ent:entrega(),punto:$('punto').value,dir:$('dir').value,ref:$('ref').value,notas:$('notas').value,
        consent:(document.querySelector('input[name=consent]:checked')||{}).value||'',op:$('op').value},
-    items:ITEMS.filter(function(i){return i.state==='ok'&&i.fileId}).map(function(i){return {id:i.id,name:i.name,size:i.size,fileId:i.fileId,pages:i.pages,auto:i.auto,color:i.color,faz:i.faz,tam:i.tam,nup:i.nup,copias:i.copias,term:i.term,cortado:i.cortado}})
+    items:ITEMS.filter(function(i){return i.state==='ok'&&i.fileId}).map(function(i){return {id:i.id,name:i.name,size:i.size,fileId:i.fileId,pages:i.pages,auto:i.auto,color:i.color,faz:i.faz,tam:i.tam,nup:i.nup,copias:i.copias,term:i.term,cortado:i.cortado,rmode:i.rmode,rango:i.rango,conId:i.conId,nota:i.nota}})
   })) }catch(e){}
 }
 function loadSaved(){ try{ var s=JSON.parse(localStorage.getItem(KEY)||'null'); return s&&Date.now()-s.t<7*864e5?s:null }catch(e){ return null } }
@@ -409,7 +496,7 @@ function restore(){
   ['nombre','tel','punto','dir','ref','notas','op'].forEach(function(k){ if(f[k]!=null&&$(k)) $(k).value=f[k] });
   if(f.ent){ var re=document.querySelector('input[name=ent][value='+f.ent+']'); if(re) re.checked=true }
   if(f.consent){ var rc=document.querySelector('input[name=consent][value='+f.consent+']'); if(rc) rc.checked=true }
-  (s.items||[]).forEach(function(x){ var it=Object.assign({},x,{state:'ok',prog:100}); uid=Math.max(uid,x.id); ITEMS.push(it); renderItem(it) });
+  (s.items||[]).forEach(function(x){ var it=Object.assign({rmode:'all',rango:'',conId:'',nota:''},x,{state:'ok',prog:100}); uid=Math.max(uid,x.id); ITEMS.push(it); renderItem(it) });
   RESTORING=false;
   updEnt();
   if(s.sent) showSent(s.sent);
